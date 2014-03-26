@@ -15,6 +15,7 @@ import android.os.Environment;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.util.Log;
 import android.view.Menu;
@@ -24,18 +25,19 @@ import android.widget.FrameLayout;
 import android.widget.Toast;
 
 /**
- * For Android camera about, check the oficial 
- * https://developer.android.com/guide/topics/media/camera.html 
- * and https://developer.android.com/reference/android/hardware/Camera.html
+ * For Android camera about, check the oficial
+ * https://developer.android.com/guide/topics/media/camera.html and
+ * https://developer.android.com/reference/android/hardware/Camera.html
  * 
  * @author afelipe
- *
+ * 
  */
 @SuppressLint("NewApi")
 public class CamaraFrontal extends Activity {
 
 	private Camera mCamera;
 	private CameraPreview mPreview;
+	FrameLayout preview;
 	public static final int MEDIA_TYPE_IMAGE = 1;
 	public static final int MEDIA_TYPE_VIDEO = 2;
 
@@ -44,36 +46,29 @@ public class CamaraFrontal extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_camara_frontal);
 
-		 //if not camera presence, come back and do nothing
+		// if not camera presence, come back and do nothing
 		if (!checkCameraHardware(this)) {
 			Toast.makeText(this, "No camera in your device, sorry! :D ",
 					Toast.LENGTH_SHORT).show();
 			return;
 		}
 
-		// Create an instance of Camera
-		mCamera = getCameraInstance();
-
-		// Create our Preview view and set it as the content of our activity.
-		// I set fragmentLaoyout dimentions  to 1dp to 1dp at activity_camara_frontral.xml for no showing user graphics
-		//that's not a correctly solution, check how to, withou preview
-		//check this StackOver https://stackoverflow.com/questions/10799976/take-picture-without-preview-android
-		mPreview = new CameraPreview(this, mCamera);
-		 FrameLayout preview = (FrameLayout)
-		 findViewById(R.id.camera_preview);
-		 preview.addView(mPreview);
+		loadCamera();
 
 		Button captureButton = (Button) findViewById(R.id.button_capture);
 		captureButton.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
 				// get an image from the camera
-				if(mCamera != null)
+				if (mCamera != null) {
+
 					mCamera.takePicture(null, null, mPicture);
-				else
-				{
+					//mCamera.startPreview();
+				} else {
 					Log.d("Error camera", "No camera started");
-					//mCamera = getCameraInstance();
+					// mCamera = getCameraInstance();
+					releaseCamera();
+					//loadCamera();
 				}
 			}
 		});
@@ -86,31 +81,57 @@ public class CamaraFrontal extends Activity {
 		return true;
 	}
 
+	private void loadCamera() {
+		// Create an instance of Camera
+		mCamera = getCameraInstance();
+
+		if(mCamera == null)
+		{
+			Toast.makeText(this, "Ha ocurrido un error con la cámara, esta no responde.", Toast.LENGTH_SHORT).show();
+			releaseCamera();
+			
+			return;
+		}
+		// Create our Preview view and set it as the content of our activity.
+		// I set fragmentLaoyout dimentions to 1dp to 1dp at
+		// activity_camara_frontral.xml for no showing user graphics
+		// that's not a correctly solution, check how to, withou preview
+		// check this StackOver
+		// https://stackoverflow.com/questions/10799976/take-picture-without-preview-android
+		mPreview = new CameraPreview(this, mCamera);
+		preview = (FrameLayout) findViewById(R.id.camera_preview);
+		preview.addView(mPreview);
+	}
+
 	@Override
 	protected void onPause() {
 		super.onPause();
-		releaseCamera();   // release the camera immediately on pause event
+		releaseCamera(); // release the camera immediately on pause event
 	}
+
 	@Override
 	protected void onResume() {
 		super.onResume();
-		//here reload camera
+		// here reload camera
+		//mCamera.startPreview();
+		//loadCamera();
 	}
-    private void releaseCamera(){
-        if (mCamera != null){
-            mCamera.release();  // release the camera for other applications
-            mCamera = null;
-            mPreview.destroyDrawingCache();
-            mPreview = null;
-        }
-    }
-    
+
+	private void releaseCamera() {
+		if (mCamera != null) {
+			mCamera.release(); // release the camera for other applications
+			mCamera = null;
+			mPreview.destroyDrawingCache();
+			mPreview = null;
+		}
+	}
+
 	/** A safe way to get an instance of the Camera object. */
 	public static Camera getCameraInstance() {
 		Camera c = null;
 		try {
 			if (Camera.getNumberOfCameras() == 2)
-				c = Camera.open(Camera.CameraInfo.CAMERA_FACING_FRONT); // attempt to get a Front Camera instance
+				c = Camera.open(Camera.CameraInfo.CAMERA_FACING_FRONT); // attempt instance
 			else
 				c = Camera.open(); // attempt to get a Camera instance, bay
 									// default is Back
@@ -154,11 +175,19 @@ public class CamaraFrontal extends Activity {
 			} catch (IOException e) {
 				Log.d("Error saving picture",
 						"Error accessing file: " + e.getMessage());
+			} finally
+			{
+//				releaseCamera();
+//				startActivity(new Intent(CamaraFrontal.this, CamaraFrontal.class));
+//				finish();
+				mCamera.startPreview();
 			}
 		}
+
 	};
 
-	//this method was taken from StackOver answer https://stackoverflow.com/a/17631104/3395146
+	// this method was taken from StackOver answer
+	// https://stackoverflow.com/a/17631104/3395146
 	private static File getOutputMediaFile(int type, String folder_name) {
 		// To be safe, you should check that the SDCard is mounted
 		// using Environment.getExternalStorageState() before doing this.
